@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using WebServer.Enums;
 using WebServer.Objects;
 
 namespace WebServer
@@ -10,6 +11,7 @@ namespace WebServer
         private static HttpListener listener;
         public static int maxSimultaneousConnections = 20;
         private static Semaphore semaphore = new Semaphore(maxSimultaneousConnections, maxSimultaneousConnections);
+        private static Func<ServerError, string> OnError = ErrorHandler;
 
         public static void Start(string siteRootPath)
         {
@@ -73,17 +75,62 @@ namespace WebServer
             _logger.Log(context.Request);
 
             var responsePacket = _router.Route(context.Request);
+            
+            if (responsePacket.Error != Enums.ServerError.OK)
+                responsePacket.Redirect = OnError(responsePacket.Error);
 
-            Respond(context.Response, responsePacket);
+            Respond(context.Request, context.Response, responsePacket);
         }
 
-        private static void Respond(HttpListenerResponse response, ResponsePacket responsePacket)
+        private static string ErrorHandler(ServerError serverError)
         {
-            response.ContentType = responsePacket.ContentType;
-            response.ContentLength64 = responsePacket.Data.Length;
-            response.OutputStream.Write(responsePacket.Data, 0, responsePacket.Data.Length);
-            response.ContentEncoding = responsePacket.Encoding;
-            response.StatusCode = (int)HttpStatusCode.OK;
+            string errorPagePath = string.Empty;
+
+            switch(serverError)
+            {
+                case ServerError.ServerError:
+                    errorPagePath = "/ErrorPages/ServerError.html";
+                    break;
+
+                case ServerError.PageNotFound:
+                    errorPagePath = "/ErrorPages/PageNotFound.html";
+                    break;
+
+                case ServerError.FileNotFound:
+                    errorPagePath = "/ErrorPages/FileNotFound.html";
+                    break;
+
+                case ServerError.NotAuthorized:
+                    errorPagePath = "/ErrorPages/NotAuthorized.html";
+                    break;
+
+                case ServerError.ExpiredSession:
+                    errorPagePath = "/ErrorPages/ExpiredSession.html";
+                    break;
+
+                case ServerError.UnknownType:
+                    errorPagePath = "/ErrorPages/UnknownType.html";
+                    break;
+            }
+
+            return errorPagePath;
+        }
+
+        private static void Respond(HttpListenerRequest request, HttpListenerResponse response, ResponsePacket responsePacket)
+        {
+            if (string.IsNullOrEmpty(responsePacket.Redirect))
+            {
+                response.ContentType = responsePacket.ContentType;
+                response.ContentLength64 = responsePacket.Data.Length;
+                response.OutputStream.Write(responsePacket.Data, 0, responsePacket.Data.Length);
+                response.ContentEncoding = responsePacket.Encoding;
+                response.StatusCode = (int)HttpStatusCode.OK;
+            }
+            else
+            {
+                response.StatusCode = (int)HttpStatusCode.Redirect;
+                response.Redirect($"http://{request.UserHostAddress}{responsePacket.Redirect}");
+            }
             response.OutputStream.Close();
         }
     }

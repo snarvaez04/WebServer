@@ -6,7 +6,7 @@ namespace WebServer.Enums
         OK,
         ExpiredSession,
         NotAuthorized,
-        FIleNotFound,
+        FileNotFound,
         PageNotFound,
         ServerError,
         UnknownType

@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="www\images\" />
-    <Folder Include="www\scripts\" />
+    <Folder Include="www\Images\" />
+    <Folder Include="www\Scripts\" />
   </ItemGroup>
 
 </Project>

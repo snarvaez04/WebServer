@@ -78,15 +78,14 @@ namespace WebServer
             return parameters;
         }
 
-        private ResponsePacket RouteToDestinatin(string httpVerb, string urlPath, Dictionary<string, string> queryStrings)
+        private ResponsePacket RouteToDestinatin(string httpVerb, string urlPath, Dictionary<string, string>? queryStrings)
         {
             var ext = urlPath.RightOf(".");
-            ResponsePacket response = null;
 
-            if (extFolderMap.TryGetValue(ext, out ExtensionInfo extInfo))
+            if (extFolderMap.TryGetValue(ext, out ExtensionInfo? extInfo))
             {
                 var fullPath = WebsitePath;
-                urlPath = urlPath.Replace("/","\\");
+                urlPath = urlPath.Replace("/", "\\");
 
                 if (urlPath != "\\")
                 {
@@ -95,10 +94,13 @@ namespace WebServer
 
                     fullPath = Path.Combine(WebsitePath, urlPath);
                 }
+                
                 return extInfo.Loader(fullPath, ext, extInfo);
             }
-
-            return response;
+            else
+            {
+                return new ResponsePacket() { Error = Enums.ServerError.UnknownType };
+            }
         }
 
         private ResponsePacket ImageLoader(string filePath, string ext, ExtensionInfo extInfo)
@@ -127,10 +129,15 @@ namespace WebServer
                 return RouteToDestinatin("Get", "/index.html", null);
             else
             {
-                if(string.IsNullOrEmpty(ext))
+                if (string.IsNullOrEmpty(ext))
                     filePath = $"{filePath}.html";
 
-                var fullPath = $@"{WebsitePath}\Pages{filePath.RightOf(WebsitePath)}";
+                string fullPath = string.Empty;
+
+                if (filePath.Contains("ErrorPages"))
+                    fullPath = $@"{WebsitePath}{filePath.RightOf(WebsitePath)}";
+                else
+                    fullPath = $@"{WebsitePath}\Pages{filePath.RightOf(WebsitePath)}";
 
                 return FileLoader(fullPath, ext, extInfo);
             }
